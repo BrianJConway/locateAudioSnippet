@@ -9,7 +9,7 @@ import re
 # in correct numerical order, and sorting the filenames
 # alphabetically sorts them wrong
 
-resultsFile = open('y.txt', 'a')
+resultsFile = open('y.txt', 'w')
 
 # Create sorted list of image files
 imageFiles = { }
@@ -29,9 +29,10 @@ for imageFile in os.listdir('chunkImages'):
 
 for chunkNum in range(maxChunk + 1):
     print('Processing ' + imageFiles[chunkNum] + '...')
-    if imageFiles[chunkNumber].endswith('POS.png'):
+    if imageFiles[chunkNum].endswith('POS.png'):
         resultsFile.write('1 \n')
     else:
         resultsFile.write('0 \n')
+    shutil.copy('chunkImages/' + imageFiles[chunkNum], 'trainingSetImages')
 
 resultsFile.close()
