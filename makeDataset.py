@@ -3,13 +3,13 @@ from pydub import AudioSegment
 import numpy as np
 import spectrogram
 from matplotlib import pyplot as plt
+import natsort
 
 def cutEndsOff(podcastFile):
-    twentyOneMins = 21 * 60 * 1000
+    twentyOneMins27Secs = (21 * 60  + 27) * 1000
     seventeenMins = 17 * 60 * 1000
     podcast = AudioSegment.from_wav('./wav/' + podcastFile)
-    podcast = podcast[99*13*1000:len(podcast) - seventeenMins]
-    print(podcast.duration_seconds)
+    podcast = podcast[twentyOneMins27Secs:len(podcast) - seventeenMins]
     podcast.export("current.wav", format="wav")
 
     return podcast
@@ -49,6 +49,7 @@ def makeImage(chunkData, fileName, colormap="jet"):
 def splitIntoChunks(podcastData, podcastAudio, fileName):
     printImg = True
 
+    strideSeconds = 6
     chunkDurationSeconds = 13
     num_chunks = int(podcastAudio.duration_seconds / chunkDurationSeconds)
 
@@ -60,19 +61,20 @@ def splitIntoChunks(podcastData, podcastAudio, fileName):
 
     print('File: ' + fileName)
     print('Duration: ' + str(int(podcastAudio.duration_seconds)) +' seconds.')
-    print('Chunks: ' + str(num_chunks))
 
-    for chunk in range(num_chunks):
-        print('Processing Chunk ' + str(chunk + 1) + '/' + str(num_chunks))
+    lastChunk = int(podcastAudio.duration_seconds / strideSeconds)
+
+    for chunk in range(lastChunk):
+        print('Processing Chunk ' + str(chunk) + '/' + str(lastChunk - 1))
         rowStart = 0
         rowEnd = 513
-        colStart = chunk * columnsPerChunk
+        colStart = chunk * (strideSeconds * columnsPerSecond)
         colEnd = colStart + columnsPerChunk
 
         chunkData = podcastData[rowStart:rowEnd,colStart:colEnd]
 
         if printImg:
-            makeImage(chunkData, fileName[:-4] + '_' + str(chunk + 1))
+            makeImage(chunkData, fileName[:-4] + '_' + str(chunk))
 
         singleRow = processChunk(chunkData)
 
@@ -82,8 +84,8 @@ def splitIntoChunks(podcastData, podcastAudio, fileName):
 
     trainingExamples.close()
 
-sortedFiles = os.listdir('./wav')
-sortedFiles.sort()
+files = os.listdir('./wav')
+sortedFiles = natsort.natsorted(files)
 
 for fileName in sortedFiles:
     middleSegment = cutEndsOff(fileName)
