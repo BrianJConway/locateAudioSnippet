@@ -7,7 +7,7 @@ fortyFiveSecs = 45 * 1000
 minute = 60 * 1000
 
 # Path where the podcasts are located
-video_dir = os.path.abspath('./mbmbam/')
+video_dir = os.path.abspath('./mp3/')
 
 # File types converting from  
 extension_list = ('*.mp3' )
