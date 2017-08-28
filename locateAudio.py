@@ -1,14 +1,27 @@
-import os
-from pydub import AudioSegment
 import numpy as np
+import math, re, os, sys
+import shutil, natsort
+from pydub import AudioSegment
 import spectrogram
 from matplotlib import pyplot as plt
 
+genImages = sys.argv[2]
+
+# Maps values from 0 to 1
+def sigmoid(x):
+  return 1 / (1 + np.exp(-x))
+ 
+# Normalizes values so that the mean is 0
+def normalize(x):
+    mu = np.mean(x)
+    sigma = np.std(x)
+    return (x - mu) / sigma
+
 def cutEndsOff(podcastFile):
-    twentyOneMins = 21 * 60 * 1000
+    twentyOneMins27Secs = (21 * 60  + 27) * 1000
     seventeenMins = 17 * 60 * 1000
     podcast = AudioSegment.from_wav('./wav/' + podcastFile)
-    podcast = podcast[99*13*1000:len(podcast) - seventeenMins]
+    podcast = podcast[twentyOneMins27Secs:len(podcast) - seventeenMins]
     podcast.export("current.wav", format="wav")
 
     return podcast
@@ -46,7 +59,6 @@ def makeImage(chunkData, fileName, colormap="jet"):
     plt.close()
 
 def splitIntoChunks(podcastData, podcastAudio, fileName):
-    printImg = True
 
     strideSeconds = 6
     chunkDurationSeconds = 13
@@ -56,16 +68,15 @@ def splitIntoChunks(podcastData, podcastAudio, fileName):
     columnsPerSecond =  podcastData.shape[1] / podcastAudio.duration_seconds 
     columnsPerChunk = int(chunkDurationSeconds * columnsPerSecond)
 
-    trainingExamples = open('X.txt', 'a')
+    trainingExamples = open('X.txt', 'w')
 
     print('File: ' + fileName)
     print('Duration: ' + str(int(podcastAudio.duration_seconds)) +' seconds.')
-    print('Chunks: ' + str(num_chunks))
 
     lastChunk = int(podcastAudio.duration_seconds / strideSeconds)
 
-    for chunk in range(lastChunk + 1):
-        print('Processing Chunk ' + str(chunk) + '/' + str(lastChunk))
+    for chunk in range(lastChunk):
+        print('Processing Chunk ' + str(chunk) + '/' + str(lastChunk - 1))
         rowStart = 0
         rowEnd = 513
         colStart = chunk * (strideSeconds * columnsPerSecond)
@@ -73,7 +84,7 @@ def splitIntoChunks(podcastData, podcastAudio, fileName):
 
         chunkData = podcastData[rowStart:rowEnd,colStart:colEnd]
 
-        if printImg:
+        if genImages == "True":
             makeImage(chunkData, fileName[:-4] + '_' + str(chunk))
 
         singleRow = processChunk(chunkData)
@@ -84,16 +95,39 @@ def splitIntoChunks(podcastData, podcastAudio, fileName):
 
     trainingExamples.close()
 
-sortedFiles = os.listdir('./wav')
-sortedFiles.sort()
+fileName = sys.argv[1]
+middleSegment = cutEndsOff(fileName)
 
-for fileName in sortedFiles:
-    middleSegment = cutEndsOff(fileName)
+# Short time Fourier Transform of podcast file
+audioData = spectrogram.plotstft('current.wav')
 
-    print('File: ' + fileName)
-    print('Duration: ' + str(middleSegment.duration_seconds) )
+splitIntoChunks(audioData, middleSegment, fileName)
 
-    # Short time Fourier Transform of podcast file
-    audioData = spectrogram.plotstft('current.wav')
+# Load X and theta matrices from file
+X = np.loadtxt('X.txt')
+data = np.load('data.npz')
 
-    splitIntoChunks(audioData, middleSegment, fileName)
+# Normalize X values
+X = normalize(X)
+
+# Add column of ones to front of X
+onesCol = np.array([np.ones(X.shape[0])]).T
+X = np.concatenate((onesCol, X), axis=1)
+
+# Apply hypothesis function (parameterized by theta) to X
+predict = sigmoid(np.dot(X, data['theta'])) >= 0.8
+
+# Find values classified as positive
+indexes = np.where(predict == 1)[0]
+print('Found ' + str(len(indexes)) + ' positives')
+
+# Get naturally sorted list of file names
+files = os.listdir('chunkImages')
+sortedFiles = natsort.natsorted(files)
+
+# Print filename corresponding to each index and time
+for index in indexes:
+    timeSeconds = 45 + (21 * 60) + 17 + index * 6 + 13
+    mins, secs = divmod(timeSeconds, 60)
+    print(sortedFiles[index])
+    print(str(mins) + ':' + str(secs))
