@@ -14,7 +14,7 @@ for img in posFiles:
     stem = img[:-8] + '.png'
     if stem in imgFiles:
         print('Deleting ...' + stem)
-        send2trash.send2trash('./test/' + stem)
+        send2trash.send2trash('./chunkImages/' + stem)
         print('Copying ...' + img)
-        shutil.copy('./posex/' + img, './test/')
+        shutil.copy('./positiveExamples/' + img, './chunkImages/')
 
