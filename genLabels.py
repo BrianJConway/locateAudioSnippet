@@ -24,7 +24,7 @@ episodeNums.sort()
 for episode in episodeNums:
 
     imageFiles = { }
-    maxChunk = -1;
+    maxChunk = -1
 
     for imageFile in os.listdir('chunkImages'):
         # Get chunk number from file name
