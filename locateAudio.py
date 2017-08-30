@@ -5,8 +5,6 @@ from pydub import AudioSegment
 import spectrogram
 from matplotlib import pyplot as plt
 
-genImages = sys.argv[2]
-
 # Maps values from 0 to 1
 def sigmoid(x):
   return 1 / (1 + np.exp(-x))
@@ -20,7 +18,7 @@ def normalize(x):
 def cutEndsOff(podcastFile):
     twentyOneMins27Secs = (21 * 60  + 27) * 1000
     seventeenMins = 17 * 60 * 1000
-    podcast = AudioSegment.from_wav('./wav/' + podcastFile)
+    podcast = AudioSegment.from_wav(podcastFile)
     podcast = podcast[twentyOneMins27Secs:len(podcast) - seventeenMins]
     podcast.export("current.wav", format="wav")
 
@@ -58,8 +56,7 @@ def makeImage(chunkData, fileName, colormap="jet"):
     plt.clf()
     plt.close()
 
-def splitIntoChunks(podcastData, podcastAudio, fileName):
-
+def splitIntoChunks(podcastData, podcastAudio, fileName, genImages):
     strideSeconds = 6
     chunkDurationSeconds = 13
     num_chunks = int(podcastAudio.duration_seconds / chunkDurationSeconds)
@@ -84,7 +81,7 @@ def splitIntoChunks(podcastData, podcastAudio, fileName):
 
         chunkData = podcastData[rowStart:rowEnd,colStart:colEnd]
 
-        if genImages == "True":
+        if genImages:
             makeImage(chunkData, fileName[:-4] + '_' + str(chunk))
 
         singleRow = processChunk(chunkData)
@@ -95,39 +92,54 @@ def splitIntoChunks(podcastData, podcastAudio, fileName):
 
     trainingExamples.close()
 
-fileName = sys.argv[1]
-middleSegment = cutEndsOff(fileName)
+def locate(path, fileName, genImages):
+    middleSegment = cutEndsOff(path + fileName)
 
-# Short time Fourier Transform of podcast file
-audioData = spectrogram.plotstft('current.wav')
+    # Short time Fourier Transform of podcast file
+    audioData = spectrogram.plotstft('current.wav')
 
-splitIntoChunks(audioData, middleSegment, fileName)
+    splitIntoChunks(audioData, middleSegment, fileName, False)
 
-# Load X and theta matrices from file
-X = np.loadtxt('X.txt')
-data = np.load('data.npz')
+    # Load X and theta matrices from file
+    X = np.loadtxt('X.txt')
+    data = np.load('data.npz')
 
-# Normalize X values
-X = normalize(X)
+    # Normalize X values
+    X = normalize(X)
 
-# Add column of ones to front of X
-onesCol = np.array([np.ones(X.shape[0])]).T
-X = np.concatenate((onesCol, X), axis=1)
+    # Add column of ones to front of X
+    onesCol = np.array([np.ones(X.shape[0])]).T
+    X = np.concatenate((onesCol, X), axis=1)
 
-# Apply hypothesis function (parameterized by theta) to X
-predict = sigmoid(np.dot(X, data['theta'])) >= 0.8
+    # Apply hypothesis function (parameterized by theta) to X
+    predict = sigmoid(np.dot(X, data['theta'])) >= 0.8
 
-# Find values classified as positive
-indexes = np.where(predict == 1)[0]
-print('Found ' + str(len(indexes)) + ' positives')
+    # Find values classified as positive
+    indexes = np.where(predict == 1)[0]
+    print( fileName + ':found ' + str(len(indexes)) + ' positives')
 
-# Get naturally sorted list of file names
-files = os.listdir('chunkImages')
+    if genImages:
+        # Get naturally sorted list of file names
+        files = os.listdir('chunkImages')
+        sortedFiles = natsort.natsorted(files)
+
+    timesFile = open('times.txt', 'a')
+
+    # Print filename corresponding to each index and time
+    for index in indexes:
+        timeSeconds = 21 * 60 + 27 + index * 6
+        mins, secs = divmod(timeSeconds, 60)
+        print(str(mins) + ':' + str(secs))
+        timesFile.write(fileName + ': ' + str(mins) + ':' + str(secs) + '\n')
+        
+        if genImages:
+            print(sortedFiles[index])
+
+    timesFile.close()
+
+path = '/media/linux/Flash/mbmbam/wav/'
+files = os.listdir(path)
 sortedFiles = natsort.natsorted(files)
 
-# Print filename corresponding to each index and time
-for index in indexes:
-    timeSeconds = 45 + (21 * 60) + 17 + index * 6 + 13
-    mins, secs = divmod(timeSeconds, 60)
-    print(sortedFiles[index])
-    print(str(mins) + ':' + str(secs))
+for audioFile in sortedFiles:
+    locate(path, audioFile, False)
