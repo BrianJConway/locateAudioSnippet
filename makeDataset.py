@@ -4,6 +4,7 @@ import numpy as np
 import spectrogram
 from matplotlib import pyplot as plt
 import natsort
+import genLabels
 
 def cutEndsOff(podcastFile):
     twentyOneMins27Secs = (21 * 60  + 27) * 1000
@@ -51,7 +52,6 @@ def splitIntoChunks(podcastData, podcastAudio, fileName):
 
     strideSeconds = 6
     chunkDurationSeconds = 13
-    num_chunks = int(podcastAudio.duration_seconds / chunkDurationSeconds)
 
     rowsPerChunk = podcastData.shape[0]
     columnsPerSecond =  podcastData.shape[1] / podcastAudio.duration_seconds 
@@ -84,16 +84,39 @@ def splitIntoChunks(podcastData, podcastAudio, fileName):
 
     trainingExamples.close()
 
-files = os.listdir('./wav')
-sortedFiles = natsort.natsorted(files)
+def fromScratch():
+    files = os.listdir('./wav')
+    sortedFiles = natsort.natsorted(files)
 
-for fileName in sortedFiles:
-    middleSegment = cutEndsOff(fileName)
+    for fileName in sortedFiles:
+        middleSegment = cutEndsOff(fileName)
 
-    print('File: ' + fileName)
-    print('Duration: ' + str(middleSegment.duration_seconds) )
+        print('File: ' + fileName)
+        print('Duration: ' + str(middleSegment.duration_seconds) )
 
-    # Short time Fourier Transform of podcast file
-    audioData = spectrogram.plotstft('current.wav')
+        # Short time Fourier Transform of podcast file
+        audioData = spectrogram.plotstft('current.wav')
 
-    splitIntoChunks(audioData, middleSegment, fileName)
+        splitIntoChunks(audioData, middleSegment, fileName)
+
+def fromLabeledData():
+    files = os.listdir('./wav')
+    sortedFiles = natsort.natsorted(files)
+
+    posExamples = genLabels.loadChunksFile()
+    
+    for episodeNum in posExamples.keys():
+        if len(posExamples[episodeNum]) > 0:    
+            fileName = 'mbmbam' + str(episodeNum) + '.wav'
+            middleSegment = cutEndsOff(fileName)
+
+            genLabels.labelOneEpisode(middleSegment, episodeNum, posExamples[episodeNum])
+            print('File: ' + fileName)
+            print('Duration: ' + str(middleSegment.duration_seconds) )
+
+            # Short time Fourier Transform of podcast file
+            audioData = spectrogram.plotstft('current.wav')
+
+            splitIntoChunks(audioData, middleSegment, fileName)
+
+    genLabels.combileFiles()
