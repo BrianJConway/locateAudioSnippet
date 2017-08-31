@@ -6,10 +6,12 @@ from matplotlib import pyplot as plt
 import natsort
 import genLabels
 
+path = '/media/linux/Flash/mbmbam/'
+
 def cutEndsOff(podcastFile):
     twentyOneMins27Secs = (21 * 60  + 27) * 1000
     seventeenMins = 17 * 60 * 1000
-    podcast = AudioSegment.from_wav('./wav/' + podcastFile)
+    podcast = AudioSegment.from_wav(path + podcastFile)
     podcast = podcast[twentyOneMins27Secs:len(podcast) - seventeenMins]
     podcast.export("current.wav", format="wav")
 
@@ -48,7 +50,7 @@ def makeImage(chunkData, fileName, colormap="jet"):
     plt.close()
 
 def splitIntoChunks(podcastData, podcastAudio, fileName):
-    printImg = True
+    printImg = False
 
     strideSeconds = 6
     chunkDurationSeconds = 13
@@ -85,7 +87,7 @@ def splitIntoChunks(podcastData, podcastAudio, fileName):
     trainingExamples.close()
 
 def fromScratch():
-    files = os.listdir('./wav')
+    files = os.listdir(path)
     sortedFiles = natsort.natsorted(files)
 
     for fileName in sortedFiles:
@@ -100,9 +102,6 @@ def fromScratch():
         splitIntoChunks(audioData, middleSegment, fileName)
 
 def fromLabeledData():
-    files = os.listdir('./wav')
-    sortedFiles = natsort.natsorted(files)
-
     posExamples = genLabels.loadChunksFile()
     
     for episodeNum in posExamples.keys():
@@ -111,6 +110,7 @@ def fromLabeledData():
             middleSegment = cutEndsOff(fileName)
 
             genLabels.labelOneEpisode(middleSegment, episodeNum, posExamples[episodeNum])
+
             print('File: ' + fileName)
             print('Duration: ' + str(middleSegment.duration_seconds) )
 
@@ -120,3 +120,6 @@ def fromLabeledData():
             splitIntoChunks(audioData, middleSegment, fileName)
 
     genLabels.combileFiles()
+
+genLabels.combileFiles()
+#fromLabeledData()
