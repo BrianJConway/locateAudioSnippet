@@ -8,12 +8,28 @@ from matplotlib import pyplot as plt
 # Maps values from 0 to 1
 def sigmoid(x):
   return 1 / (1 + np.exp(-x))
- 
+
 # Normalizes values so that the mean is 0
 def normalize(x):
-    mu = np.mean(x)
-    sigma = np.std(x)
+    mu = np.mean(x,axis=0)
+    print(mu)
+
+    sigma = np.std(x, axis=0)
     return (x - mu) / sigma
+
+def applyHypothesis(X, theta, threshold):
+
+    # Normalize X values
+    X = normalize(X)
+    
+    # Add column of ones to front of X
+    onesCol = np.array([np.ones(X.shape[0])]).T
+    X = np.concatenate((onesCol, X), axis=1)
+
+    # Apply hypothesis function (parameterized by theta) to X
+    predict = sigmoid(np.dot(X, theta)) >= threshold
+
+    return predict
 
 def cutEndsOff(podcastFile):
     twentyOneMins27Secs = (21 * 60  + 27) * 1000
@@ -104,15 +120,8 @@ def locate(path, fileName, genImages):
     X = np.loadtxt('X.txt')
     data = np.load('data.npz')
 
-    # Normalize X values
-    X = normalize(X)
-
-    # Add column of ones to front of X
-    onesCol = np.array([np.ones(X.shape[0])]).T
-    X = np.concatenate((onesCol, X), axis=1)
-
     # Apply hypothesis function (parameterized by theta) to X
-    predict = sigmoid(np.dot(X, data['theta'])) >= 0.8
+    predict = applyHypothesis(X, data['theta'], 0.2)
 
     # Find values classified as positive
     indexes = np.where(predict == 1)[0]
@@ -137,9 +146,54 @@ def locate(path, fileName, genImages):
 
     timesFile.close()
 
+"""
 path = '/media/linux/Flash/mbmbam/wav/'
 files = os.listdir(path)
 sortedFiles = natsort.natsorted(files)
 
 for audioFile in sortedFiles:
     locate(path, audioFile, False)
+"""
+
+import pprint
+
+# Generates a dictionary where episode numbers are keys
+# and ranges where indices in the X matrix correspond to those episodes
+# are values
+def getDatasetIndices():
+    chunkIndices = { }
+
+    index = 0
+    files = os.listdir('dataLabels')
+    sortedFiles = natsort.natsorted(files)
+    for fileName in sortedFiles:
+        if not fileName.startswith('y'):
+            match = re.search(r'(\d+)y.txt', fileName)
+            currentEpisode = int(match.group(1))
+            
+            currentFile = open('dataLabels/' + fileName)
+            numChunks = len(currentFile.readlines())
+
+            chunkIndices[currentEpisode] = { 'start':index, 'end':index + numChunks - 1 }
+            index = index + numChunks
+    return chunkIndices
+            
+
+def locateFromDataset(fileName):
+    chunkIndices = getDatasetIndices()
+
+    dataFile = np.load(fileName)
+    
+    for currentMatrix in dataFile.keys():
+        if currentMatrix.startswith('x1'):
+            X = dataFile['x1']
+        elif currentMatrix.startswith('x'):
+            X = np.concatenate((X, dataFile[currentMatrix]), axis=0)
+    
+    theta = np.loadtxt('theta.txt')
+    predict = applyHypothesis(X, theta, 0.2)
+    indexes = np.where(predict == 1)[0] 
+    positives = len(indexes)
+    print(positives)
+
+locateFromDataset('data.npz')
