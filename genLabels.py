@@ -8,7 +8,6 @@ from pydub import AudioSegment
 
 path = '/media/linux/Flash/mbmbam/'
 
-
 def loadChunksFile():
     # Read chunk info for each episode into dictionary
     chunksFile = open('episodeChunks.txt')
@@ -32,12 +31,9 @@ def loadChunksFile():
 def labelOneEpisode(episodeAudio, episodeNum, posChunks):
     labelsFile = open('/home/linux/Desktop/AdFinder/dataLabels/' +
                       str(episodeNum) + 'y.txt', 'w')
-    podcastDuration = episodeAudio.duration_seconds - \
-        (21 * 60 + 27) - (17 * 60)
+    podcastDuration = episodeAudio.duration_seconds
     numChunks = podcastDuration / 6
 
-    print('Episode ' + str(episodeNum) +
-          ': ' + str(int(numChunks)) + ' chunks.')
     for chunkNum in range(int(numChunks)):
         if chunkNum in posChunks:
             labelsFile.write('1 \n')
@@ -53,7 +49,7 @@ def combileFiles():
     # Combine all label files to create one giant file of labels
     allLabels = open('/home/linux/Desktop/AdFinder/dataLabels/y.txt', 'w')
     for currentFile in sortedFiles:
-        labelsFile = open('dataLabels/' + currentFile)
+        labelsFile = open('/home/linux/Desktop/AdFinder/dataLabels/' + currentFile)
         episodeLabels = labelsFile.read()
         allLabels.write(episodeLabels)
         labelsFile.close()
@@ -69,15 +65,13 @@ def fromTxtFile():
     # Generate labels file for current episode
     for currentEpisode in posExamples.keys():
         if len(posExamples[currentEpisode]) > 0:
-            episodeAudio = AudioSegment.from_wav(
+                twentyOneMins27Secs = (21 * 60  + 27) * 1000
+                seventeenMins = 17 * 60 * 1000
+                episodeAudio = AudioSegment.from_wav(
                 path + 'mbmbam' + str(currentEpisode) + '.wav')
-            labelOneEpisode(episodeAudio, currentEpisode, posExamples[currentEpisode])
-            
-    combileFiles()
-
-
-fromTxtFile()
-
+                episodeAudio = episodeAudio[twentyOneMins27Secs:len(episodeAudio) - seventeenMins]
+                labelOneEpisode(episodeAudio, currentEpisode, posExamples[currentEpisode])
+    # combileFiles()
 
 def fromImages():
     resultsFile = open('y.txt', 'w')
