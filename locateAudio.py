@@ -12,9 +12,9 @@ def sigmoid(x):
 # Normalizes values so that the mean is 0
 def normalize(x):
     mu = np.mean(x,axis=0)
-    print(mu)
 
     sigma = np.std(x, axis=0)
+
     return (x - mu) / sigma
 
 def applyHypothesis(X, theta, threshold):
@@ -160,6 +160,7 @@ import pprint
 # Generates a dictionary where episode numbers are keys
 # and ranges where indices in the X matrix correspond to those episodes
 # are values
+# Need to look into using an interval tree to reduce the amount of memory taken up by this
 def getDatasetIndices():
     chunkIndices = { }
 
@@ -180,8 +181,6 @@ def getDatasetIndices():
             
 
 def locateFromDataset(fileName):
-    chunkIndices = getDatasetIndices()
-
     dataFile = np.load(fileName)
     
     for currentMatrix in dataFile.keys():
@@ -191,9 +190,29 @@ def locateFromDataset(fileName):
             X = np.concatenate((X, dataFile[currentMatrix]), axis=0)
     
     theta = np.loadtxt('theta.txt')
-    predict = applyHypothesis(X, theta, 0.2)
+    predict = applyHypothesis(X, dataFile['theta'], 0.2)
     indexes = np.where(predict == 1)[0] 
-    positives = len(indexes)
-    print(positives)
+    print( 'Found ' + str(len(indexes)) + ' positives')
+
+    chunkIndices = getDatasetIndices()
+
+    foundChunks = { }
+    for currentVal in indexes:
+        for episode in chunkIndices.keys():
+            if currentVal > chunkIndices[episode]['start'] and currentVal < chunkIndices[episode]['end']:
+                foundChunks.setdefault(episode,[ ])
+                foundChunks[episode].append(currentVal - chunkIndices[episode]['start'])
+                
+
+    pprint.pprint(foundChunks)
+
+    timesFile = open('times.txt', 'w')
+
+    for episode in foundChunks.keys():
+        timeSeconds = 21 * 60 + 27 + foundChunks[episode][0] * 6
+        mins, secs = divmod(timeSeconds, 60)
+        timesFile.write('mbmbam' + str(episode) + '.wav' + ': ' + str(mins) + ':' + str(secs) + '\n')
+
+    timesFile.close()
 
 locateFromDataset('data.npz')
