@@ -74,50 +74,41 @@ def fromTxtFile():
     # combileFiles()
 
 def fromImages():
-    resultsFile = open('y.txt', 'w')
-
-    episodeNums = []
-
+    # Get sorted list of all episodes represented by images
+    episodeFiles = { }
     for imageFile in os.listdir('chunkImages'):
         match = re.search(r'mbmbam(\d+)_(\d+)(_POS)?.png', imageFile)
-        if int(match.group(1)) not in episodeNums:
-            episodeNums.append(int(match.group(1)))
-
-    print(episodeNums)
-    episodeNums.sort()
-
-    for episode in episodeNums:
-
-        imageFiles = {}
-        maxChunk = -1
-
-        for imageFile in os.listdir('chunkImages'):
-            # Get chunk number from file name
-            match = re.search(str(episode) + r'_(\d+).', imageFile)
-
-            if match:
-                chunkNumber = int(match.group(1))
-
-                # Check if new max chunk value
-                if maxChunk < chunkNumber:
-                    maxChunk = chunkNumber
-
-                # Save chunk and filename in dictionary
-                imageFiles[int(chunkNumber)] = imageFile
-
-        for chunkNum in range(maxChunk + 1):
-            print('Processing ' + imageFiles[chunkNum] + '...')
-            if imageFiles[chunkNum].endswith('POS.png'):
+        episodeNumber = int(match.group(1))
+        episodeFiles.setdefault(episodeNumber, [ ])
+        episodeFiles[episodeNumber].append(match.group())
+    
+    # Create y matrix in file that labels positive examples
+    resultsFile = open('y.txt', 'w')
+    for episode in episodeFiles.keys():
+        for imageFile in episodeFiles[episode]:
+            print('Processing ' + imageFile + '...')
+            if imageFile.endswith('POS.png'):
                 resultsFile.write('1 \n')
                 shutil.copy('chunkImages/' +
-                            imageFiles[chunkNum], 'positiveExamples')
+                            imageFile, 'positiveExamples')
             else:
                 resultsFile.write('0 \n')
             shutil.copy('chunkImages/' +
-                        imageFiles[chunkNum], 'trainingSetImages')
-
+                        imageFile, 'trainingSetImages')
     resultsFile.close()
 
+    # Create file that shows which chunk numbers are positive for each episode
+    chunksFile = open('episodeChunks.txt', 'w')
+    for episode in episodeFiles.keys():
+        # Write episode number 
+        chunksFile.write(str(episode) + ': ')
+        # Write current chunk number if the image is labeled as a positive example
+        for imageFile in episodeFiles[episode]:
+            match = re.search(r'mbmbam(\d+)_(\d+)(_POS)?.png', imageFile)
+            if imageFile.endswith('POS.png'):
+                resultsFile.write(match.group(2) + ' ')
+        resultsFile.write('\n')
+    chunksFile.close()
 
 """
 timings = {}
