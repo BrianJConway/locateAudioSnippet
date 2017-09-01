@@ -40,7 +40,7 @@ def locate(path, fileName, genImages):
     # Short time Fourier Transform of podcast file
     audioData = spectrogram.plotstft('current.wav')
 
-    makeDataset.splitIntoChunks(audioData, middleSegment, fileName, False)
+    makeDataset.splitIntoChunks(audioData, middleSegment, fileName)
 
     # Load X and theta matrices from file
     X = np.loadtxt('X.txt')

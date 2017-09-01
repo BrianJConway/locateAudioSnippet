@@ -49,7 +49,7 @@ def makeImage(chunkData, fileName, colormap="jet"):
     plt.clf()
     plt.close()
 
-def splitIntoChunks(podcastData, podcastAudio, fileName, genImages):
+def splitIntoChunks(podcastData, podcastAudio, fileName, genImages=False):
     strideSeconds = 6
     chunkDurationSeconds = 13
 
@@ -57,7 +57,7 @@ def splitIntoChunks(podcastData, podcastAudio, fileName, genImages):
     columnsPerSecond =  podcastData.shape[1] / podcastAudio.duration_seconds 
     columnsPerChunk = int(chunkDurationSeconds * columnsPerSecond)
 
-    trainingExamples = open('X.txt', 'w')
+    trainingExamples = open('X.txt', 'a')
 
     print('File: ' + fileName)
     print('Duration: ' + str(int(podcastAudio.duration_seconds)) +' seconds.')
@@ -97,7 +97,7 @@ def fromScratch():
         # Short time Fourier Transform of podcast file
         audioData = spectrogram.plotstft('current.wav')
 
-        splitIntoChunks(audioData, middleSegment, fileName, False)
+        splitIntoChunks(audioData, middleSegment, fileName)
 
 def fromLabeledData():
     posExamples = genLabels.loadChunksFile()
@@ -115,9 +115,8 @@ def fromLabeledData():
             # Short time Fourier Transform of podcast file
             audioData = spectrogram.plotstft('current.wav')
 
-            splitIntoChunks(audioData, middleSegment, fileName, False)
+            splitIntoChunks(audioData, middleSegment, fileName)
 
     genLabels.combileFiles()
 
-genLabels.combileFiles()
 #fromLabeledData()
