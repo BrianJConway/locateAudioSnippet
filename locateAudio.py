@@ -72,9 +72,11 @@ def locate(path, fileName, genImages):
 
     timesFile.close()
 
-# Generates a dictionary where episode numbers are keys and the values are a dictionary 
-# representing the ranges of indices in X that represent the chunks of that episode
-# Need to look into using an interval tree to reduce the amount of memory taken up by this
+"""
+ Generates a dictionary where episode numbers are keys and the values are a dictionary 
+ representing the ranges of indices in X that represent the chunks of that episode
+ NOTE: Need to look into using an interval tree to reduce the amount of memory taken up by this
+"""
 def getDatasetIndices():
     chunkIndices = { }
 
