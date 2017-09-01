@@ -97,7 +97,7 @@ def fromScratch():
         # Short time Fourier Transform of podcast file
         audioData = spectrogram.plotstft('current.wav')
 
-        splitIntoChunks(audioData, middleSegment, fileName)
+        splitIntoChunks(audioData, middleSegment, fileName, genImages=True)
 
 def fromLabeledData():
     posExamples = genLabels.loadChunksFile()
