@@ -1,9 +1,9 @@
 import numpy as np
-import math, re, os, sys
+import math, re, os, sys, pprint
 import shutil, natsort
 from pydub import AudioSegment
-import spectrogram
 from matplotlib import pyplot as plt
+import spectrogram
 
 # Maps values from 0 to 1
 def sigmoid(x):
@@ -11,14 +11,16 @@ def sigmoid(x):
 
 # Normalizes values so that the mean is 0
 def normalize(x):
+    # Store means of each column in a row vector
     mu = np.mean(x,axis=0)
 
+    # Store std dev of each column in a row vector
     sigma = np.std(x, axis=0)
 
+    # normalize based on mean and std dev of each column
     return (x - mu) / sigma
 
 def applyHypothesis(X, theta, threshold):
-
     # Normalize X values
     X = normalize(X)
     
@@ -27,9 +29,7 @@ def applyHypothesis(X, theta, threshold):
     X = np.concatenate((onesCol, X), axis=1)
 
     # Apply hypothesis function (parameterized by theta) to X
-    predict = sigmoid(np.dot(X, theta)) >= threshold
-
-    return predict
+    return sigmoid(np.dot(X, theta)) >= threshold
 
 def cutEndsOff(podcastFile):
     twentyOneMins27Secs = (21 * 60  + 27) * 1000
@@ -146,20 +146,8 @@ def locate(path, fileName, genImages):
 
     timesFile.close()
 
-"""
-path = '/media/linux/Flash/mbmbam/wav/'
-files = os.listdir(path)
-sortedFiles = natsort.natsorted(files)
-
-for audioFile in sortedFiles:
-    locate(path, audioFile, False)
-"""
-
-import pprint
-
-# Generates a dictionary where episode numbers are keys
-# and ranges where indices in the X matrix correspond to those episodes
-# are values
+# Generates a dictionary where episode numbers are keys and the values are a dictionary 
+# representing the ranges of indices in X that represent the chunks of that episode
 # Need to look into using an interval tree to reduce the amount of memory taken up by this
 def getDatasetIndices():
     chunkIndices = { }
@@ -181,23 +169,29 @@ def getDatasetIndices():
             
 
 def locateFromDataset(fileName):
+    # Load X, y, and theta matrices
     dataFile = np.load(fileName)
     
+    # Reconstruct X from submatrices
     for currentMatrix in dataFile.keys():
+        # First submatrix to append to
         if currentMatrix.startswith('x1'):
             X = dataFile['x1']
+        # Remaining submatrices get appended
         elif currentMatrix.startswith('x'):
             X = np.concatenate((X, dataFile[currentMatrix]), axis=0)
     
-    theta = np.loadtxt('theta.txt')
-    predict = applyHypothesis(X, dataFile['theta'], 0.2)
-    indexes = np.where(predict == 1)[0] 
-    print( 'Found ' + str(len(indexes)) + ' positives')
+    # Apply hypothesis function to input values, get predictions
+    hyp = applyHypothesis(X, dataFile['theta'], 0.2)
+    predictions = np.where(hyp == 1)[0] 
+    print( 'Found ' + str(len(predictions)) + ' positives')
 
+    # Create a dictionary where each episode has a range of indices in X it corresponds to
     chunkIndices = getDatasetIndices()
-
     foundChunks = { }
-    for currentVal in indexes:
+
+    # Convert indices of X to episode numbers and chunks
+    for currentVal in predictions:
         for episode in chunkIndices.keys():
             if currentVal > chunkIndices[episode]['start'] and currentVal < chunkIndices[episode]['end']:
                 foundChunks.setdefault(episode,[ ])
@@ -206,13 +200,22 @@ def locateFromDataset(fileName):
 
     pprint.pprint(foundChunks)
 
+    # Convert chunks to times for each episode, print to file
     timesFile = open('times.txt', 'w')
-
     for episode in foundChunks.keys():
+        # Get the first found time for the current episode
         timeSeconds = 21 * 60 + 27 + foundChunks[episode][0] * 6
         mins, secs = divmod(timeSeconds, 60)
         timesFile.write('mbmbam' + str(episode) + '.wav' + ': ' + str(mins) + ':' + str(secs) + '\n')
-
     timesFile.close()
 
 locateFromDataset('data.npz')
+
+"""
+path = '/media/linux/Flash/mbmbam/wav/'
+files = os.listdir(path)
+sortedFiles = natsort.natsorted(files)
+
+for audioFile in sortedFiles:
+    locate(path, audioFile, False)
+"""
