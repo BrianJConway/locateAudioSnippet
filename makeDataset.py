@@ -1,17 +1,15 @@
-import os
+import os, sys
 from pydub import AudioSegment
 import numpy as np
-import spectrogram
+import spectrogram, genLabels
 from matplotlib import pyplot as plt
 import natsort
 import genLabels
 
-path = '/media/linux/Flash/mbmbam/'
-
 def cutEndsOff(podcastFile):
     twentyOneMins27Secs = (21 * 60  + 27) * 1000
     seventeenMins = 17 * 60 * 1000
-    podcast = AudioSegment.from_wav(path + podcastFile)
+    podcast = AudioSegment.from_wav(podcastFile)
     podcast = podcast[twentyOneMins27Secs:len(podcast) - seventeenMins]
     podcast.export("current.wav", format="wav")
 
@@ -44,12 +42,12 @@ def makeImage(chunkData, fileName, colormap="jet"):
     plt.xticks([])
     plt.yticks([])
 
-    plt.savefig( 'chunkImages/' + fileName + '.png', dpi='figure', bbox_inches="tight", pad_inches=0)
+    plt.savefig( os.path.join('chunkImages', fileName + '.png'), dpi='figure', bbox_inches="tight", pad_inches=0)
             
     plt.clf()
     plt.close()
 
-def splitIntoChunks(podcastData, podcastAudio, fileName, genImages=False):
+def splitIntoChunks(podcastData, podcastAudio, fileName, genImages=False, genAudioSnippets=False):
     strideSeconds = 6
     chunkDurationSeconds = 13
 
@@ -74,22 +72,37 @@ def splitIntoChunks(podcastData, podcastAudio, fileName, genImages=False):
         chunkData = podcastData[rowStart:rowEnd,colStart:colEnd]
 
         if genImages:
+            # Create image folder if it doesn't exist
+            os.makedirs('chunkImages', exist_ok=True)
+
+            # Create image for current cunk
             makeImage(chunkData, fileName[:-4] + '_' + str(chunk))
 
+        if genAudioSnippets:
+            # Create folder for audio snippets if it doesn't exist
+            os.makedirs('chunkAudioFiles', exist_ok=True)
+
+            # Create wav file for current cunk
+            chunkData.export(os.path.join('chunkAudioFiles', fileName[:-4] + '_' + str(chunk) + '.wav'), format='wav')
+
+        # Get matrix of averaged values for the current chunk unrolled into a single row of values
         singleRow = processChunk(chunkData)
 
+        # Append row contents to 'X' file
         for currentVal in singleRow:
             trainingExamples.write(str(currentVal) + ' ')
         trainingExamples.write('\n')
 
     trainingExamples.close()
 
-def fromScratch():
+def fromScratch(path, genImages=True, genAudioSnippets=False):
+    # Get naturally sorted list of wav files
     files = os.listdir(path)
     sortedFiles = natsort.natsorted(files)
-
+    
     for fileName in sortedFiles:
-        middleSegment = cutEndsOff(fileName)
+        # Get audio of just the middle section
+        middleSegment = cutEndsOff(os.path.join(path, fileName))
 
         print('File: ' + fileName)
         print('Duration: ' + str(middleSegment.duration_seconds) )
@@ -97,16 +110,23 @@ def fromScratch():
         # Short time Fourier Transform of podcast file
         audioData = spectrogram.plotstft('current.wav')
 
-        splitIntoChunks(audioData, middleSegment, fileName, genImages=True)
+        # Add current episode chunks to 'X' matrix of averaged values for each chunk of the audio
+        splitIntoChunks(audioData, middleSegment, fileName, genImages=genImages, genAudioSnippets=genAudioSnippets)
 
-def fromLabeledData():
+def fromLabeledData(path):
+    # Load dictionary of all episodes and their positive chunks
     posExamples = genLabels.loadChunksFile()
     
+    # Loop through each episode
     for episodeNum in posExamples.keys():
+        # Only process episodes that actually have positive chunks
         if len(posExamples[episodeNum]) > 0:    
             fileName = 'mbmbam' + str(episodeNum) + '.wav'
-            middleSegment = cutEndsOff(fileName)
 
+            # Get audio of just the middle section
+            middleSegment = cutEndsOff(os.path.join(path, fileName))
+
+            # Generate 'y' file for current episode 
             genLabels.labelOneEpisode(middleSegment, episodeNum, posExamples[episodeNum])
 
             print('File: ' + fileName)
@@ -115,8 +135,11 @@ def fromLabeledData():
             # Short time Fourier Transform of podcast file
             audioData = spectrogram.plotstft('current.wav')
 
+            # Add current episode chunks to 'X' matrix of averaged values for each chunk of the audio
             splitIntoChunks(audioData, middleSegment, fileName)
 
+    # Combine each episode's 'y' file into one big 'y' file
     genLabels.combileFiles()
 
-#fromLabeledData()
+#fromScratch('/media/linux/Flash/mbmbam/')
+#fromLabeledData('/media/linux/Flash/mbmbam/')
