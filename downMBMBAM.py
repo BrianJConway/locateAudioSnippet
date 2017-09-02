@@ -5,8 +5,8 @@ import os
 import bs4
 
 # Create folder to store podcasts
-os.makedirs('mbmbam', exist_ok=True)
-os.chdir('/media/linux/Flash')
+destDir = 'mp3'
+os.makedirs(destDir, exist_ok=True)
 
 # Base URL
 baseUrl = 'http://mbmbam.libsyn.com/webpage'
@@ -57,9 +57,9 @@ while not (year == endYear and month == endMonth):
                 res.raise_for_status()
 
                 # Create file for current episode
-                podcastFile = open(os.path.join('mbmbam', fileName), 'wb')
+                podcastFile = open(os.path.join(destDir, fileName), 'wb')
 
-                # Write episode content to the file
+                # Write binary episode content to the file
                 for chunk in res.iter_content(100000):
                     podcastFile.write(chunk)
                 podcastFile.close()
