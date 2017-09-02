@@ -1,36 +1,43 @@
-import os
-import glob
-import re
+import os, glob, re, sys, natsort, send2trash
 from pydub import AudioSegment
 
 fortyFiveSecs = 45 * 1000
 minute = 60 * 1000
 
-# Path where the podcasts are located
-video_dir = os.path.abspath('./mp3/')
+# Path where the mp3's are located
+if len(sys.argv) > 1:
+    srcPath = sys.argv[1]
+else:
+    srcPath = 'mp3'
 
-# File types converting from  
-extension_list = ('*.mp3' )
+# Path where the wav files will be stored
+if len(sys.argv) > 2:
+    destPath = sys.argv[2]
+else:
+    destPath = 'wav'
 
-os.chdir(video_dir)
-for extension in extension_list:
-    for podcastMP3 in glob.glob(extension):
-        # Extract .mp3 filename
-        mp3_fileName = os.path.splitext(os.path.basename(podcastMP3))[0]
+os.makedirs(destPath, exist_ok=True)
 
+# Sort files in source folder
+mp3Files = os.listdir(srcPath)
+mp3Files = natsort.natsorted(mp3Files)
+print(mp3Files)
+
+for fileName in mp3Files:
+    if fileName.endswith('.mp3'):
         # Regular expression that finds the episode number
-        match = re.search(r'\d+$', mp3_fileName)
+        match = re.search(r'\d+$', fileName[:-4])
 
-        # Checkc if episode number was found
+        # Check if episode number was found
         if match != None:
-            wav_filename = 'mbmbam' + match.group() + '.wav'
-
-            # Create podcast object 
-            podcast = AudioSegment.from_file(podcastMP3)
+            wavFileName = 'mbmbam' + match.group() + '.wav'
 
             # Check if not already processed
-            if wav_filename not in os.listdir('./wav'):
-                print('Converting ' + mp3_fileName + '.mp3 to '+  wav_filename + "... ", end='', flush=True )
+            if wavFileName not in os.listdir(destPath):
+                print('Converting ' + fileName + ' to '+  wavFileName + "... ", end='', flush=True )
+
+                # Create podcast object 
+                podcast = AudioSegment.from_file(os.path.join(srcPath, fileName))
 
                 # Cut the beginning theme song
                 if int(match.group()) <= 172:
@@ -43,12 +50,11 @@ for extension in extension_list:
                 podcast = podcast.set_channels(1)
 
                 # Save wav file 
-                podcast.export('./wav/' + wav_filename, format='wav')
+                podcast.export(os.path.join(destPath, wavFileName), format='wav')
                 print('Done')
 
-        # Delete .mp3 file
-        if os.path.isfile(podcastMP3):
-            print('Permanently deleting ' + podcastMP3)
-            os.unlink('./' + podcastMP3)
+            # Delete .mp3 file
+            print('Permanently deleting ' + fileName)
+            send2trash.send2trash(os.path.join(srcPath,fileName))
 
 print('All Done.')
