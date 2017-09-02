@@ -3,7 +3,7 @@
 """ This work is licensed under a Creative Commons Attribution 3.0 Unported License.
     Frank Zalkow, 2012-2013 """
 
-"Modified by Brian Conway"  
+"""Modified by Brian Conway"""
 
 import numpy as np
 import os
