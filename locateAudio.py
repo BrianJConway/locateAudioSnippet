@@ -6,8 +6,6 @@ from matplotlib import pyplot as plt
 import spectrogram
 import makeDataset
 
-path = '/media/linux/Flash/mbmbam/wav/'
-
 # Maps values from 0 to 1
 def sigmoid(x):
   return 1 / (1 + np.exp(-x))
@@ -34,8 +32,8 @@ def applyHypothesis(X, theta, threshold):
     # Apply hypothesis function (parameterized by theta) to X
     return sigmoid(np.dot(X, theta)) >= threshold
 
-def locate(path, fileName, genImages):
-    middleSegment = makeDataset.cutEndsOff(path + fileName)
+def locate(fileName, genImages):
+    middleSegment = makeDataset.cutEndsOff(fileName)
 
     # Short time Fourier Transform of podcast file
     audioData = spectrogram.plotstft('current.wav')
@@ -140,10 +138,10 @@ def locateFromDataset(fileName):
 locateFromDataset('data.npz')
 
 """
-path = '/media/linux/Flash/mbmbam/wav/'
+path = '/media/linux/Flash/mbmbam/wav'
 files = os.listdir(path)
 sortedFiles = natsort.natsorted(files)
 
 for audioFile in sortedFiles:
-    locate(path, audioFile, False)
+    locate(os.path.join(path,audiofile), False)
 """
