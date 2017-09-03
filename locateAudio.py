@@ -128,11 +128,20 @@ def locateFromDataset(fileName):
 
     # Convert chunks to times for each episode, print to file
     timesFile = open('times.txt', 'w')
+    chunksFile = open('episodeChunks.txt', 'w')
     for episode in foundChunks.keys():
         # Get the first found time for the current episode
         timeSeconds = 21 * 60 + 27 + foundChunks[episode][0] * 6
         mins, secs = divmod(timeSeconds, 60)
         timesFile.write('mbmbam' + str(episode) + '.wav' + ': ' + str(mins) + ':' + str(secs) + '\n')
+
+        # Write all found chunks to a file
+        chunksFile.write(str(episode) + ': ')
+        for currentChunk in foundChunks[episode]:
+            chunksFile.write(str(currentChunk) + ' ')
+        chunksFile.write('\n')
+
+    chunksFile.close()
     timesFile.close()
 
 locateFromDataset('data.npz')
