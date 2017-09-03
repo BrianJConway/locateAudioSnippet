@@ -1,4 +1,4 @@
-import pprint, re, natsort, send2trash, os
+import pprint, re, natsort, send2trash, os, shutil
 from pydub import AudioSegment
 
 # Creates a dictionary of episode numbers as keys and lists of
@@ -20,7 +20,7 @@ def loadChunksFile():
         episode = int(values[0][:-1])
         posExamples.setdefault(episode, [])
 
-        # Get each chunk numberk, add to list of chunks for that episode
+        # Get each chunk number, add to list of chunks for that episode
         for chunkIndex in range(1, len(values)):
             posExamples[episode].append(int(values[chunkIndex]))
     chunksFile.close()
@@ -58,24 +58,28 @@ def combileFiles():
 def fromTxtFile(path):
     posExamples = loadChunksFile()
 
-    if 'dataLabels' not in os.listdir():
-        os.makedirs('dataLabels')
+    os.makedirs('dataLabels', exist_ok=True)
 
     # Generate labels file for current episode
     for currentEpisode in posExamples.keys():
         if len(posExamples[currentEpisode]) > 0:
                 twentyOneMins27Secs = (21 * 60  + 27) * 1000
                 seventeenMins = 17 * 60 * 1000
-                episodeAudio = AudioSegment.from_wav(
-                path + 'mbmbam' + str(currentEpisode) + '.wav')
+                episodeAudio = AudioSegment.from_wav(os.path.join(path, 'mbmbam' + str(currentEpisode) + '.wav'))
                 episodeAudio = episodeAudio[twentyOneMins27Secs:len(episodeAudio) - seventeenMins]
                 labelOneEpisode(episodeAudio, currentEpisode, posExamples[currentEpisode])
     # combileFiles()
 
 def fromImages():
-    # Get sorted list of all episodes represented by images
+    os.makedirs('positiveExamples', exist_ok=True)
+    os.makedirs('dataLabels', exist_ok=True)
+
+    # Get sorted list of all episodes that are represented by images
     episodeFiles = { }
-    for imageFile in os.listdir('chunkImages'):
+    allFiles = os.listdir('chunkImages')
+    allFiles = natsort.natsorted(allFiles)
+
+    for imageFile in allFiles:
         match = re.search(r'mbmbam(\d+)_(\d+)(_POS)?.png', imageFile)
         episodeNumber = int(match.group(1))
         episodeFiles.setdefault(episodeNumber, [ ])
@@ -84,16 +88,17 @@ def fromImages():
     # Create y matrix in file that labels positive examples
     resultsFile = open('y.txt', 'w')
     for episode in episodeFiles.keys():
+        episodeFile = open(os.path.join('dataLabels', str(episode) + 'y.txt' ), 'w')
         for imageFile in episodeFiles[episode]:
             print('Processing ' + imageFile + '...')
             if imageFile.endswith('POS.png'):
                 resultsFile.write('1 \n')
-                shutil.copy('chunkImages/' +
-                            imageFile, 'positiveExamples')
+                episodeFile.write('1 \n')
+                shutil.copy(os.path.join('chunkImages', imageFile), 'positiveExamples')
             else:
                 resultsFile.write('0 \n')
-            shutil.copy('chunkImages/' +
-                        imageFile, 'trainingSetImages')
+                episodeFile.write('0 \n')
+        episodeFile.close()
     resultsFile.close()
 
     # Create file that shows which chunk numbers are positive for each episode
@@ -105,6 +110,6 @@ def fromImages():
         for imageFile in episodeFiles[episode]:
             match = re.search(r'mbmbam(\d+)_(\d+)(_POS)?.png', imageFile)
             if imageFile.endswith('POS.png'):
-                resultsFile.write(match.group(2) + ' ')
-        resultsFile.write('\n')
+                chunksFile.write(match.group(2) + ' ')
+        chunksFile.write('\n')
     chunksFile.close()
