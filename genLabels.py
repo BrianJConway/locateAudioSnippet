@@ -27,12 +27,18 @@ def loadChunksFile():
 
     return posExamples
 
-
+'''
+Creates 'y' file for one episode based information in dictionary
+'''
 def labelOneEpisode(episodeAudio, episodeNum, posChunks):
+    # Open output file
     labelsFile = open(os.path.join('dataLabels', str(episodeNum) + 'y.txt'), 'w')
+
+    # Calculate number of total chunks 
     podcastDuration = episodeAudio.duration_seconds
     numChunks = podcastDuration / 6
 
+    # Write labels to file
     for chunkNum in range(int(numChunks)):
         if chunkNum in posChunks:
             labelsFile.write('1 \n')
@@ -41,6 +47,9 @@ def labelOneEpisode(episodeAudio, episodeNum, posChunks):
     labelsFile.close()
 
 
+'''
+Combines all 'y' files into one file
+'''
 def combileFiles():
     labelsFiles = os.listdir('dataLabels')
     sortedFiles = natsort.natsorted(labelsFiles)
@@ -54,7 +63,10 @@ def combileFiles():
         labelsFile.close()
     allLabels.close()
 
-
+'''
+Uses the episodeChunks.txt file to determine which episodes 
+to create 'y' files for
+'''
 def fromTxtFile(path):
     posExamples = loadChunksFile()
 
@@ -70,6 +82,13 @@ def fromTxtFile(path):
                 labelOneEpisode(episodeAudio, currentEpisode, posExamples[currentEpisode])
     # combileFiles()
 
+'''
+Uses labeled images in the chunkImages folder to create 'y'
+files for each episode that has images in that folder, and 
+also creates one big 'y' file that has all the labels. Then, it 
+creates the episodeChunks.txt for each episode and which chunks
+were labeled as positive.
+'''
 def fromImages():
     os.makedirs('positiveExamples', exist_ok=True)
     os.makedirs('dataLabels', exist_ok=True)
@@ -79,6 +98,8 @@ def fromImages():
     allFiles = os.listdir('chunkImages')
     allFiles = natsort.natsorted(allFiles)
 
+    # Fill dictionary with each episode as its own key with their values
+    # being a list of all the chunk file names for that episode
     for imageFile in allFiles:
         match = re.search(r'mbmbam(\d+)_(\d+)(_POS)?.png', imageFile)
         episodeNumber = int(match.group(1))
@@ -89,6 +110,7 @@ def fromImages():
     resultsFile = open('y.txt', 'w')
     for episode in episodeFiles.keys():
         episodeFile = open(os.path.join('dataLabels', str(episode) + 'y.txt' ), 'w')
+        # Loop through each file for the current episode
         for imageFile in episodeFiles[episode]:
             print('Processing ' + imageFile + '...')
             if imageFile.endswith('POS.png'):
