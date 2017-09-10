@@ -42,7 +42,7 @@ def locate(fileName, genImages):
 
     # Load X and theta matrices from file
     X = np.loadtxt('X.txt')
-    data = np.load('data.npz')
+    data = np.load('theta.npz')
 
     # Apply hypothesis function (parameterized by theta) to X
     predict = applyHypothesis(X, data['theta'], 0.2)
@@ -97,18 +97,11 @@ def getDatasetIndices():
 def locateFromDataset(fileName):
     # Load X, y, and theta matrices
     dataFile = np.load(fileName)
-    
-    # Reconstruct X from submatrices
-    for currentMatrix in dataFile.keys():
-        # First submatrix to append to
-        if currentMatrix.startswith('x1'):
-            X = dataFile['x1']
-        # Remaining submatrices get appended
-        elif currentMatrix.startswith('x'):
-            X = np.concatenate((X, dataFile[currentMatrix]), axis=0)
+    X = dataFile['X']
+    thetaFile = np.load('theta.npz')
     
     # Apply hypothesis function to input values, get predictions
-    hyp = applyHypothesis(X, dataFile['theta'], 0.2)
+    hyp = applyHypothesis(X, thetaFile['theta'], 0.2)
     predictions = np.where(hyp == 1)[0] 
     print( 'Found ' + str(len(predictions)) + ' positives')
 
@@ -147,7 +140,7 @@ def locateFromDataset(fileName):
 locateFromDataset('data.npz')
 
 """
-path = '/media/linux/Flash/mbmbam/wav'
+path = # PATH TO WHERE WAV FILES ARE
 files = os.listdir(path)
 sortedFiles = natsort.natsorted(files)
 

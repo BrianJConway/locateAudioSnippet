@@ -1,8 +1,16 @@
-import os, sys, re, natsort
+import os
+import sys
+import re
+import natsort
 from pydub import AudioSegment
 import numpy as np
-import spectrogram, genLabels
+import spectrogram
+import genLabels
 from matplotlib import pyplot as plt
+import subprocess
+import shutil
+import send2trash
+
 
 def cutEndsOff(podcastFile):
     twentyOneMins27Secs = (21 * 60 + 27) * 1000
@@ -13,6 +21,7 @@ def cutEndsOff(podcastFile):
 
     return podcast
 
+
 '''
  Generate flattened 50x100 matrix of current chunk
  50x100 is chosen arbitrarily since originally
@@ -22,6 +31,8 @@ def cutEndsOff(podcastFile):
  experiment with how much smaller the matrix
  can be, in order to reduce memory needed to store
 '''
+
+
 def processChunk(chunkData):
     chunkHeight = int(chunkData.shape[0] / 50)
     chunkWidth = int(chunkData.shape[1] / 100)
@@ -69,7 +80,7 @@ def splitIntoChunks(podcastData, podcastAudio, fileName, genImages=False, genAud
 
     match = re.search(r'mbmbam(\d+).wav', fileName)
     episodeNum = match.group(1)
-    episodeFile = open(os.path.join('episodeData', episodeNum + 'X.txt'),'w')
+    episodeFile = open(os.path.join('episodeData', episodeNum + 'X.txt'), 'w')
 
     print('File: ' + fileName)
     print('Duration: ' + str(int(podcastAudio.duration_seconds)) + ' seconds.')
@@ -118,13 +129,50 @@ def splitIntoChunks(podcastData, podcastAudio, fileName, genImages=False, genAud
     episodeFile.close()
     trainingExamples.close()
 
+# Saves 'X.txt' to compressed numpy file
+def saveDataset():
+    # Check if file size exceeds 1GB
+    if os.path.getsize('X.txt') >= 1000000000:
+        # Create directory for split chunks
+        os.makedirs('splitFile', exist_ok=True)
+        shutil.copy('X.txt', 'splitFile')
+
+        # Split X.txt into multiple chunks
+        # NOTE: calls linux command, uses linux path structure, will only work
+        # on linux
+        subprocess.call(["split", "./splitFile/X.txt", "-d",
+                         "-l", "15000", "./splitFile/"])
+
+        # Load each chunk and concatenate onto numpy matrix
+        index = 0
+        chunkFiles = os.listdir('splitFile')
+        chunkFiles = natsort.natsorted(chunkFiles)
+        for splitChunk in chunkFiles:
+            print(splitChunk)
+            currentMatrix = np.loadtxt('splitFile/' + splitChunk)
+
+            if index == 0:
+                X = currentMatrix
+            else:
+                X = np.concatenate((X, currentMatrix), axis=0)
+            index += 1
+            print(X.shape)
+
+        # Save matrix to compresssed .npz file
+        np.savez_compressed('data', X=X)
+        
+    # Otherwise, assume file size is less than 1GB
+    else:
+        # Load X.txt into numpy matrix and save to .npz file
+        X = np.loadtxt('X.txt')
+        np.savez_compressed('data', X=X)
 
 def fromScratch(path, genImages=True, genAudioSnippets=False):
     # Get naturally sorted list of wav files
     files = os.listdir(path)
     sortedFiles = natsort.natsorted(files)
     os.makedirs('episodeData', exist_ok=True)
-    
+
     for fileName in sortedFiles:
         # Get audio of just the middle section
         middleSegment = cutEndsOff(os.path.join(path, fileName))
@@ -140,12 +188,14 @@ def fromScratch(path, genImages=True, genAudioSnippets=False):
         splitIntoChunks(audioData, middleSegment, fileName,
                         genImages=genImages, genAudioSnippets=genAudioSnippets)
 
+        # Save dataset to .npz file
+        saveDataset()
 
 def fromLabeledData(path):
     # Load dictionary of all episodes and their positive chunks
     posExamples = genLabels.loadChunksFile()
-    os.makedirs('episodeData',exist_ok=True)
-    
+    os.makedirs('episodeData', exist_ok=True)
+
     # Loop through each episode
     for episodeNum in posExamples.keys():
         fileName = 'mbmbam' + str(episodeNum) + '.wav'
@@ -171,5 +221,14 @@ def fromLabeledData(path):
     genLabels.combileFiles()
 
 
-fromScratch('wav')
-#fromLabeledData('wav')
+# fromScratch('wav')
+# fromLabeledData('wav')
+
+if os.path.getsize('X.txt') >= 1000000000:
+    '''
+    # Create directory for split chunks
+    os.makedirs('splitFile', exist_ok=True)
+    shutil.copy('X.txt', 'splitFile')
+    subprocess.call(["split", "./splitFile/X.txt", "-d","-l", "15000", "./splitFile/" ])
+    send2trash.send2trash('./splitFile/X.txt')
+    '''
