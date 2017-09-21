@@ -94,11 +94,11 @@ def getDatasetIndices():
     return chunkIndices
             
 
-def locateFromDataset(fileName):
+def locateFromDataset(XfileName, thetaFileName):
     # Load X, y, and theta matrices
-    dataFile = np.load(fileName)
+    dataFile = np.load(XfileName)
     X = dataFile['X']
-    thetaFile = np.load('theta.npz')
+    thetaFile = np.load(thetaFileName)
     
     # Apply hypothesis function to input values, get predictions
     hyp = applyHypothesis(X, thetaFile['theta'], 0.2)
@@ -137,9 +137,10 @@ def locateFromDataset(fileName):
     chunksFile.close()
     timesFile.close()
 
-locateFromDataset('data.npz')
 
 """
+locateFromDataset('data.npz', 'theta.npz')
+
 path = # PATH TO WHERE WAV FILES ARE
 files = os.listdir(path)
 sortedFiles = natsort.natsorted(files)
