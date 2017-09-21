@@ -1,6 +1,11 @@
 import numpy as np
-import math, re, os, sys, pprint
-import shutil, natsort
+import math
+import re
+import os
+import sys
+import pprint
+import shutil
+import natsort
 from pydub import AudioSegment
 from matplotlib import pyplot as plt
 import spectrogram
@@ -8,12 +13,12 @@ import makeDataset
 
 # Maps values from 0 to 1
 def sigmoid(x):
-  return 1 / (1 + np.exp(-x))
+    return 1 / (1 + np.exp(-x))
 
 # Normalizes values so that the mean is 0
 def normalize(x):
     # Store means of each column in a row vector
-    mu = np.mean(x,axis=0)
+    mu = np.mean(x, axis=0)
 
     # Store std dev of each column in a row vector
     sigma = np.std(x, axis=0)
@@ -21,16 +26,18 @@ def normalize(x):
     # normalize based on mean and std dev of each column
     return (x - mu) / sigma
 
+
 def applyHypothesis(X, theta, threshold):
     # Normalize X values
     X = normalize(X)
-    
+
     # Add column of ones to front of X
     onesCol = np.array([np.ones(X.shape[0])]).T
     X = np.concatenate((onesCol, X), axis=1)
 
     # Apply hypothesis function (parameterized by theta) to X
     return sigmoid(np.dot(X, theta)) >= threshold
+
 
 def locate(fileName, genImages):
     middleSegment = makeDataset.cutEndsOff(fileName)
@@ -49,7 +56,7 @@ def locate(fileName, genImages):
 
     # Find values classified as positive
     indexes = np.where(predict == 1)[0]
-    print( fileName + ':found ' + str(len(indexes)) + ' positives')
+    print(fileName + ':found ' + str(len(indexes)) + ' positives')
 
     if genImages:
         # Get naturally sorted list of file names
@@ -64,11 +71,12 @@ def locate(fileName, genImages):
         mins, secs = divmod(timeSeconds, 60)
         print(str(mins) + ':' + str(secs))
         timesFile.write(fileName + ': ' + str(mins) + ':' + str(secs) + '\n')
-        
+
         if genImages:
             print(sortedFiles[index])
 
     timesFile.close()
+
 
 """
  Generates a dictionary where episode numbers are keys and the values are a dictionary 
@@ -76,7 +84,7 @@ def locate(fileName, genImages):
  NOTE: Need to look into using an interval tree to reduce the amount of memory taken up by this
 """
 def getDatasetIndices():
-    chunkIndices = { }
+    chunkIndices = {}
 
     index = 0
     files = os.listdir('dataLabels')
@@ -85,37 +93,39 @@ def getDatasetIndices():
         if not fileName.startswith('y'):
             match = re.search(r'(\d+)y.txt', fileName)
             currentEpisode = int(match.group(1))
-            
+
             currentFile = open('dataLabels/' + fileName)
             numChunks = len(currentFile.readlines())
 
-            chunkIndices[currentEpisode] = { 'start':index, 'end':index + numChunks - 1 }
+            chunkIndices[currentEpisode] = {
+                'start': index, 'end': index + numChunks - 1}
             index = index + numChunks
     return chunkIndices
-            
+
 
 def locateFromDataset(XfileName, thetaFileName):
     # Load X, y, and theta matrices
     dataFile = np.load(XfileName)
     X = dataFile['X']
     thetaFile = np.load(thetaFileName)
-    
+
     # Apply hypothesis function to input values, get predictions
     hyp = applyHypothesis(X, thetaFile['theta'], 0.2)
-    predictions = np.where(hyp == 1)[0] 
-    print( 'Found ' + str(len(predictions)) + ' positives')
+    predictions = np.where(hyp == 1)[0]
+    print('Found ' + str(len(predictions)) + ' positives')
 
-    # Create a dictionary where each episode has a range of indices in X it corresponds to
+    # Create a dictionary where each episode has a range of indices in X it
+    # corresponds to
     chunkIndices = getDatasetIndices()
-    foundChunks = { }
+    foundChunks = {}
 
     # Convert indices of X to episode numbers and chunks
     for currentVal in predictions:
         for episode in chunkIndices.keys():
             if currentVal > chunkIndices[episode]['start'] and currentVal < chunkIndices[episode]['end']:
-                foundChunks.setdefault(episode,[ ])
-                foundChunks[episode].append(currentVal - chunkIndices[episode]['start'])
-                
+                foundChunks.setdefault(episode, [])
+                foundChunks[episode].append(
+                    currentVal - chunkIndices[episode]['start'])
 
     pprint.pprint(foundChunks)
 
@@ -126,7 +136,8 @@ def locateFromDataset(XfileName, thetaFileName):
         # Get the first found time for the current episode
         timeSeconds = 21 * 60 + 27 + foundChunks[episode][0] * 6
         mins, secs = divmod(timeSeconds, 60)
-        timesFile.write('mbmbam' + str(episode) + '.wav' + ': ' + str(mins) + ':' + str(secs) + '\n')
+        timesFile.write('mbmbam' + str(episode) + '.wav' +
+                        ': ' + str(mins) + ':' + str(secs) + '\n')
 
         # Write all found chunks to a file
         chunksFile.write(str(episode) + ': ')
