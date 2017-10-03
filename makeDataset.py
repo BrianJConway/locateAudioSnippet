@@ -88,7 +88,9 @@ def splitIntoChunks(podcastData, podcastAudio, fileName, genImages=False, genAud
     lastChunk = int(podcastAudio.duration_seconds / strideSeconds)
 
     for chunk in range(lastChunk):
-        print('Processing Chunk ' + str(chunk) + '/' + str(lastChunk - 1))
+        statusStr = 'Processing Chunk ' + str(chunk) + '/' + str(lastChunk - 1)
+        print(statusStr, end='')
+
         rowStart = 0
         rowEnd = 513
         colStart = chunk * (strideSeconds * columnsPerSecond)
@@ -126,8 +128,11 @@ def splitIntoChunks(podcastData, podcastAudio, fileName, genImages=False, genAud
         trainingExamples.write('\n')
         episodeFile.write('\n')
 
+        print('\b' * len(statusStr), end='', flush=True)
+
     episodeFile.close()
     trainingExamples.close()
+    print('\n')
 
 # Saves 'X.txt' to compressed numpy file
 def saveDataset():
@@ -177,9 +182,6 @@ def fromScratch(path, genImages=True, genAudioSnippets=False):
         # Get audio of just the middle section
         middleSegment = cutEndsOff(os.path.join(path, fileName))
 
-        print('File: ' + fileName)
-        print('Duration: ' + str(middleSegment.duration_seconds))
-
         # Short time Fourier Transform of podcast file
         audioData = spectrogram.plotstft('current.wav')
 
@@ -207,9 +209,6 @@ def fromLabeledData(path):
         genLabels.labelOneEpisode(
             middleSegment, episodeNum, posExamples[episodeNum])
 
-        print('File: ' + fileName)
-        print('Duration: ' + str(middleSegment.duration_seconds))
-
         # Short time Fourier Transform of podcast file
         audioData = spectrogram.plotstft('current.wav')
 
@@ -223,12 +222,3 @@ def fromLabeledData(path):
 
 # fromScratch('wav')
 # fromLabeledData('wav')
-
-if os.path.getsize('X.txt') >= 1000000000:
-    '''
-    # Create directory for split chunks
-    os.makedirs('splitFile', exist_ok=True)
-    shutil.copy('X.txt', 'splitFile')
-    subprocess.call(["split", "./splitFile/X.txt", "-d","-l", "15000", "./splitFile/" ])
-    send2trash.send2trash('./splitFile/X.txt')
-    '''

@@ -112,7 +112,8 @@ def fromImages():
         episodeFile = open(os.path.join('dataLabels', str(episode) + 'y.txt' ), 'w')
         # Loop through each file for the current episode
         for imageFile in episodeFiles[episode]:
-            print('Processing ' + imageFile + '...')
+            statusStr = 'Processing ' + imageFile + '...'
+            print(statusStr, end='')
             if imageFile.endswith('POS.png'):
                 resultsFile.write('1 \n')
                 episodeFile.write('1 \n')
@@ -120,6 +121,7 @@ def fromImages():
             else:
                 resultsFile.write('0 \n')
                 episodeFile.write('0 \n')
+            print('\b' * len(statusStr), end='', flush=True)
         episodeFile.close()
     resultsFile.close()
 
